@@ -2,7 +2,7 @@
   "name": "bunchive",
   "module": "index.ts",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "exports": {
     ".": "./dist/index.js"
   },
