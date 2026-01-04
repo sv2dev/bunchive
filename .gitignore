@@ -1,0 +1,6 @@
+.DS_Store
+/backup
+bu.js
+.env
+node_modules
+.cursor
