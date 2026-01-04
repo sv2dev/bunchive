@@ -3,9 +3,17 @@
   "module": "index.ts",
   "type": "module",
   "version": "0.0.0",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "bunchive": "dist/cli.js"
+  },
   "scripts": {
     "bu": "bun run ./src/cli.ts",
-    "build": "bun build ./src/cli.ts --target bun --minify --outfile bu.js",
+    "build": "tsc && bun build ./src/cli.ts --target bun --minify --outfile bunchive.js",
+    "clean": "rm -rf dist",
     "test": "bun test",
     "format": "oxfmt src"
   },

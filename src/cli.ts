@@ -1,3 +1,5 @@
+#!/usr/bin/env bun
+
 import * as cron from "node-cron";
 import { parseArgs } from "node:util";
 import { backup } from "./backup";
@@ -106,7 +108,12 @@ switch (cmd) {
 
       if (backupCount !== undefined) {
         for (const destination of opts.destinations) {
-          await cleanupOldBackups(destination, backupCount, timestampFormat, compressionAlgorithm);
+          await cleanupOldBackups({
+            destination,
+            count: backupCount,
+            timestampFormat,
+            compressionAlgorithm,
+          });
         }
       }
     };

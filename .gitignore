@@ -1,6 +1,9 @@
 .DS_Store
 /backup
+/restored
 bu.js
 .env
 node_modules
 .cursor
+dist
+bunchive.js

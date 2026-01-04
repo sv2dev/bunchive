@@ -3,12 +3,17 @@ import { readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { CompressionAlgorithm, TimestampFormat } from "./common";
 
-export async function cleanupOldBackups(
-  destination: string,
-  count: number,
-  timestampFormat: TimestampFormat,
-  compressionAlgorithm: CompressionAlgorithm,
-) {
+export async function cleanupOldBackups({
+  destination,
+  count,
+  timestampFormat,
+  compressionAlgorithm,
+}: {
+  destination: string;
+  count: number;
+  timestampFormat: TimestampFormat;
+  compressionAlgorithm: CompressionAlgorithm;
+}) {
   if (timestampFormat === "none") {
     throw new Error("Sliding backup window requires timestamp format to be enabled");
   }
