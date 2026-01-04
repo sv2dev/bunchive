@@ -49,6 +49,8 @@ commands:
       --no-checksum: Disable checksum generation. Can also use the environment variable BACKUP_CHECKSUM=false.
       -C, --cwd: Change working directory before processing globs. Globs and file paths in the tar archive will be
         relative to this directory. Alternatively, you can use the environment variable BACKUP_CWD.
+      -v, --verbose: Enable verbose debug logging. Logs files and their sizes as they are added to the backup.
+        Alternatively, you can use the environment variable BACKUP_VERBOSE=true.
   restore - Restore files from previously backed up archive
     source: The source archive file. Can be local or remote.
     options:
@@ -96,6 +98,7 @@ switch (cmd) {
       });
       const generateChecksum = opts.checksum !== false;
       const cwd = opts.cwd as string | undefined;
+      const verbose = opts.verbose === true;
       const checksum = await backup({
         patterns,
         outputPaths,
@@ -104,6 +107,7 @@ switch (cmd) {
         compressionAlgorithm,
         generateChecksum,
         cwd,
+        verbose,
       });
       console.log("Backup created");
       if (checksum) {
@@ -245,6 +249,11 @@ export function getArgs() {
           type: "string",
           default: process.env.BACKUP_CWD,
           short: "C",
+        },
+        verbose: {
+          type: "boolean",
+          short: "v",
+          default: process.env.BACKUP_VERBOSE === "true",
         },
       },
       strict: true,

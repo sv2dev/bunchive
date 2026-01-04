@@ -19,6 +19,7 @@ export async function backup({
   compressionAlgorithm = COMPRESSION_ALG,
   generateChecksum = true,
   cwd,
+  verbose = false,
 }: {
   patterns: string[];
   outputPaths: string[];
@@ -27,9 +28,10 @@ export async function backup({
   compressionAlgorithm?: CompressionAlgorithm;
   generateChecksum?: boolean;
   cwd?: string;
+  verbose?: boolean;
 }) {
   const encryptionStream = new EncryptionStream(encryptionAlgorithm, key);
-  const compressedStream = createFileStream(patterns, cwd).pipeThrough(
+  const compressedStream = createFileStream(patterns, cwd, verbose).pipeThrough(
     new CompressionStream(compressionAlgorithm) as ReadableWritablePair<unknown, Uint8Array>,
   );
 
@@ -107,7 +109,7 @@ function prepareOutputs(outputPaths: string[]) {
   return sinks;
 }
 
-function createFileStream(patterns: string[], cwd?: string) {
+function createFileStream(patterns: string[], cwd?: string, verbose?: boolean) {
   const tarPack = pack();
   const nodeStream = Readable.toWeb(tarPack, {
     strategy: { highWaterMark: 64 * 1024 },
@@ -119,6 +121,9 @@ function createFileStream(patterns: string[], cwd?: string) {
       for await (const path of readFiles(patterns, cwd)) {
         const file = Bun.file(resolvedCwd ? resolve(resolvedCwd, path) : path);
         const stats = await file.stat();
+        if (verbose) {
+          console.debug(`Adding file: ${path} (${stats.size} bytes)`);
+        }
         const entry = tarPack.entry(
           {
             name: path,
