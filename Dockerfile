@@ -5,6 +5,8 @@ RUN bun install --frozen-lockfile && \
     bun run build
 
 FROM oven/bun:1.3.5-alpine AS runtime
+RUN apk add --no-cache tzdata
 WORKDIR /app
-COPY --from=build /app/bunchive.js ./
-ENTRYPOINT ["bun", "bunchive.js"]
+ENV TZ=UTC
+COPY --from=build /app/entrypoint.sh /app/bunchive.js ./
+ENTRYPOINT ["/app/entrypoint.sh"]

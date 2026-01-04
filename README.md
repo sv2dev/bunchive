@@ -56,7 +56,7 @@ bun run bunchive backup -k <hex-key> -d ./backup "src/**/*.ts"
 You can also use the tool using Docker:
 
 ```bash
-docker run --rm -v $(pwd):/data -w /data ghcr.io/sv2dev/bunchive:latest backup -k <hex-key> -d ./backup "**/*"
+docker run --rm -v $(pwd):/data -w /data -e TZ=<timezone> ghcr.io/sv2dev/bunchive:latest backup -k <hex-key> -d ./backup "**/*"
 ```
 
 ## Usage
