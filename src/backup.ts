@@ -39,22 +39,23 @@ export async function backup({
   const streamWithIv = prependIv(encryptionStream.iv, encryptedStream);
 
   let checksum: string | undefined;
+  let bytesWritten = 0;
   if (generateChecksum) {
     const { stream: checksumStream, hashPromise } = createChecksumStream(key);
     const [finalStream, checksumTeeStream] = streamWithIv.tee();
 
     const sinks = prepareOutputs(outputPaths);
     checksumTeeStream.pipeTo(checksumStream);
-    await writeToMultipleSinks(finalStream, sinks);
+    bytesWritten = await writeToMultipleSinks(finalStream, sinks);
 
     checksum = await hashPromise;
     await writeChecksumFiles(outputPaths, checksum);
   } else {
     const sinks = prepareOutputs(outputPaths);
-    await writeToMultipleSinks(streamWithIv, sinks);
+    bytesWritten = await writeToMultipleSinks(streamWithIv, sinks);
   }
 
-  return checksum;
+  return { checksum, bytesWritten };
 }
 
 function prependIv(iv: Buffer, stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
@@ -82,6 +83,7 @@ function prependIv(iv: Buffer, stream: ReadableStream<Uint8Array>): ReadableStre
 
 async function writeToMultipleSinks(encryptedStream: ReadableStream<any>, writers: Bun.FileSink[]) {
   const reader = encryptedStream.getReader();
+  let bytesWritten = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -91,10 +93,12 @@ async function writeToMultipleSinks(encryptedStream: ReadableStream<any>, writer
         await writer.flush();
       }),
     );
+    bytesWritten += value.length;
   }
   for (const writer of writers) {
     await writer.end();
   }
+  return bytesWritten;
 }
 
 function prepareOutputs(outputPaths: string[]) {

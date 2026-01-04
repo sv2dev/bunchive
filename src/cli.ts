@@ -99,7 +99,8 @@ switch (cmd) {
       const generateChecksum = opts.checksum !== false;
       const cwd = opts.cwd as string | undefined;
       const verbose = opts.verbose === true;
-      const checksum = await backup({
+      const startTime = Date.now();
+      const { checksum, bytesWritten } = await backup({
         patterns,
         outputPaths,
         key,
@@ -109,8 +110,8 @@ switch (cmd) {
         cwd,
         verbose,
       });
-      console.log("Backup created");
-      if (checksum) {
+      console.log(`Backup completed (${bytesWritten}B, ${(Date.now() - startTime) / 1000}s)`);
+      if (checksum && verbose) {
         console.log(`Checksum: ${checksum}`);
       }
 
