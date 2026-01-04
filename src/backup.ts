@@ -1,7 +1,7 @@
 import { Glob } from "bun";
 import { createCipheriv, createHmac, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pack } from "tar-stream";
 import {
@@ -18,6 +18,7 @@ export async function backup({
   encryptionAlgorithm = ENCRYPTION_ALG,
   compressionAlgorithm = COMPRESSION_ALG,
   generateChecksum = true,
+  cwd,
 }: {
   patterns: string[];
   outputPaths: string[];
@@ -25,9 +26,10 @@ export async function backup({
   encryptionAlgorithm?: EncryptionAlgorithm;
   compressionAlgorithm?: CompressionAlgorithm;
   generateChecksum?: boolean;
+  cwd?: string;
 }) {
   const encryptionStream = new EncryptionStream(encryptionAlgorithm, key);
-  const compressedStream = createFileStream(patterns).pipeThrough(
+  const compressedStream = createFileStream(patterns, cwd).pipeThrough(
     new CompressionStream(compressionAlgorithm) as ReadableWritablePair<unknown, Uint8Array>,
   );
 
@@ -105,16 +107,17 @@ function prepareOutputs(outputPaths: string[]) {
   return sinks;
 }
 
-function createFileStream(patterns: string[]) {
+function createFileStream(patterns: string[], cwd?: string) {
   const tarPack = pack();
   const nodeStream = Readable.toWeb(tarPack, {
     strategy: { highWaterMark: 64 * 1024 },
   }) as ReadableStream<Uint8Array>;
 
   (async () => {
+    const resolvedCwd = cwd ? resolve(cwd) : undefined;
     try {
-      for await (const path of readFiles(patterns)) {
-        const file = Bun.file(path);
+      for await (const path of readFiles(patterns, cwd)) {
+        const file = Bun.file(resolvedCwd ? resolve(resolvedCwd, path) : path);
         const stats = await file.stat();
         const entry = tarPack.entry(
           {
@@ -148,9 +151,9 @@ function createFileStream(patterns: string[]) {
   return nodeStream;
 }
 
-async function* readFiles(patterns: string[]) {
+async function* readFiles(patterns: string[], cwd?: string) {
   for (const pattern of patterns) {
-    for await (const path of new Glob(pattern).scan()) {
+    for await (const path of new Glob(pattern).scan({ cwd })) {
       yield path;
     }
   }

@@ -47,6 +47,8 @@ commands:
       -s, --schedule: Cron pattern for scheduled backups. When provided, the script runs continuously
         and executes backups on schedule. Alternatively, you can use the environment variable BACKUP_SCHEDULE.
       --no-checksum: Disable checksum generation. Can also use the environment variable BACKUP_CHECKSUM=false.
+      -C, --cwd: Change working directory before processing globs. Globs and file paths in the tar archive will be
+        relative to this directory. Alternatively, you can use the environment variable BACKUP_CWD.
   restore - Restore files from previously backed up archive
     source: The source archive file. Can be local or remote.
     options:
@@ -93,6 +95,7 @@ switch (cmd) {
         return `${dest}${separator}${filename}`;
       });
       const generateChecksum = opts.checksum !== false;
+      const cwd = opts.cwd as string | undefined;
       const checksum = await backup({
         patterns,
         outputPaths,
@@ -100,6 +103,7 @@ switch (cmd) {
         encryptionAlgorithm,
         compressionAlgorithm,
         generateChecksum,
+        cwd,
       });
       console.log("Backup created");
       if (checksum) {
@@ -236,6 +240,11 @@ export function getArgs() {
           type: "string",
           short: "s",
           default: process.env.BACKUP_SCHEDULE,
+        },
+        cwd: {
+          type: "string",
+          default: process.env.BACKUP_CWD,
+          short: "C",
         },
       },
       strict: true,
