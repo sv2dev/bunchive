@@ -2,10 +2,19 @@
   "name": "bunchive",
   "module": "index.ts",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "exports": {
     ".": "./dist/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sv2dev/bunchive"
+  },
+  "keywords": [
+    "archive",
+    "backup",
+    "restore"
+  ],
   "types": "./dist/index.d.ts",
   "bin": {
     "bunchive": "dist/cli.js"

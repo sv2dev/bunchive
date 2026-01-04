@@ -11,6 +11,7 @@ jobs:
     name: Check if version changed
     runs-on: ubuntu-latest
     outputs:
+      changed: ${{ steps.check.outputs.changed }}
       version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +27,7 @@ jobs:
 
           changed=$([ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ] && echo "true" || echo "false")
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
   publish-common:
     name: Publish common package
     needs: check-version
@@ -40,7 +42,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.5
-          registry-url: "https://registry.npmjs.org/"
       - run: |
           bun install --frozen-lockfile
           bun run build
@@ -71,5 +72,5 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
-          VERSION=${{ needs.check-version.outputs.server-version }}
-          docker buildx build --push --platform linux/arm64,linux/amd64 . --tag $IMAGE_ID:$VERSION --label "runnumber=${GITHUB_RUN_ID}"
+          VERSION=${{ needs.check-version.outputs.version }}
+          docker buildx build --push --platform linux/arm64,linux/amd64 . -t $IMAGE_ID:$VERSION -t $IMAGE_ID:latest --label "runnumber=${GITHUB_RUN_ID}"

@@ -16,8 +16,47 @@ A secure backup and restore utility that creates encrypted, compressed archives 
 
 ## Installation
 
+### bunx
+
+You can install the tool using bunx:
+
 ```bash
-bun install
+bunx bunchive backup -k <hex-key> -d ./backup "src/**/*.ts"
+```
+
+### bun install
+
+You can install the tool using bun:
+
+```bash
+bun install bunchive
+```
+
+After installation, you can use APIs programmatically:
+
+```ts
+import { backup, generateKey } from "bunchive";
+
+const key = await generateKey();
+const checksum = await backup({
+  patterns: ["src/**/*.ts"],
+  outputPaths: ["./backup"],
+  key: key,
+});
+```
+
+You can also use the CLI:
+
+```bash
+bun run bunchive backup -k <hex-key> -d ./backup "src/**/*.ts"
+```
+
+### Docker
+
+You can also use the tool using Docker:
+
+```bash
+docker run --rm -v $(pwd):/data -w /data ghcr.io/sv2dev/bunchive:latest backup -k <hex-key> -d ./backup "**/*"
 ```
 
 ## Usage
