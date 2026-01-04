@@ -1,4 +1,4 @@
-import { createDecipheriv, createHash } from "node:crypto";
+import { createDecipheriv, createHmac } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
@@ -47,7 +47,7 @@ export async function restore({
   await extractFiles(extractStream, outputDir);
 
   if (verifyChecksum) {
-    const backupFileHash = await computeFileHash(source);
+    const backupFileHash = await computeFileHash(source, key);
     await verifyChecksumFile(source, backupFileHash);
   }
 }
@@ -102,13 +102,13 @@ class DecryptionStream extends TransformStream {
   }
 }
 
-async function computeFileHash(filePath: string): Promise<string> {
+async function computeFileHash(filePath: string, key: Buffer): Promise<string> {
   if (filePath.startsWith("s3")) {
     throw new Error("Cannot compute hash for S3 files");
   }
 
   const file = Bun.file(filePath);
-  const hash = createHash("sha256");
+  const hmac = createHmac("sha256", key);
   const stream = file.stream();
   const reader = stream.getReader();
 
@@ -116,11 +116,11 @@ async function computeFileHash(filePath: string): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     if (value) {
-      hash.update(value);
+      hmac.update(value);
     }
   }
 
-  return hash.digest("hex");
+  return hmac.digest("hex");
 }
 
 async function verifyChecksumFile(source: string, computedHash: string) {

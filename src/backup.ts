@@ -1,5 +1,5 @@
 import { Glob } from "bun";
-import { createCipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createHmac, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { Readable } from "node:stream";
@@ -17,12 +17,14 @@ export async function backup({
   key,
   encryptionAlgorithm = ENCRYPTION_ALG,
   compressionAlgorithm = COMPRESSION_ALG,
+  generateChecksum = true,
 }: {
   patterns: string[];
   outputPaths: string[];
   key: Buffer;
   encryptionAlgorithm?: EncryptionAlgorithm;
   compressionAlgorithm?: CompressionAlgorithm;
+  generateChecksum?: boolean;
 }) {
   const encryptionStream = new EncryptionStream(encryptionAlgorithm, key);
   const compressedStream = createFileStream(patterns).pipeThrough(
@@ -32,15 +34,21 @@ export async function backup({
   const encryptedStream = compressedStream.pipeThrough(encryptionStream.stream);
   const streamWithIv = prependIv(encryptionStream.iv, encryptedStream);
 
-  const { stream: checksumStream, hashPromise } = createChecksumStream();
-  const [finalStream, checksumTeeStream] = streamWithIv.tee();
+  let checksum: string | undefined;
+  if (generateChecksum) {
+    const { stream: checksumStream, hashPromise } = createChecksumStream(key);
+    const [finalStream, checksumTeeStream] = streamWithIv.tee();
 
-  const sinks = prepareOutputs(outputPaths);
-  checksumTeeStream.pipeTo(checksumStream);
-  await writeToMultipleSinks(finalStream, sinks);
+    const sinks = prepareOutputs(outputPaths);
+    checksumTeeStream.pipeTo(checksumStream);
+    await writeToMultipleSinks(finalStream, sinks);
 
-  const checksum = await hashPromise;
-  await writeChecksumFiles(outputPaths, checksum);
+    checksum = await hashPromise;
+    await writeChecksumFiles(outputPaths, checksum);
+  } else {
+    const sinks = prepareOutputs(outputPaths);
+    await writeToMultipleSinks(streamWithIv, sinks);
+  }
 
   return checksum;
 }
@@ -166,11 +174,11 @@ class EncryptionStream {
   }
 }
 
-function createChecksumStream(): {
+function createChecksumStream(key: Buffer): {
   stream: WritableStream<Uint8Array>;
   hashPromise: Promise<string>;
 } {
-  const hash = createHash("sha256");
+  const hmac = createHmac("sha256", key);
   let hashResolve: ((hash: string) => void) | null = null;
   const hashPromise = new Promise<string>((resolve) => {
     hashResolve = resolve;
@@ -178,11 +186,11 @@ function createChecksumStream(): {
 
   const stream = new WritableStream({
     write(chunk) {
-      hash.update(chunk);
+      hmac.update(chunk);
     },
     close() {
       if (hashResolve) {
-        hashResolve(hash.digest("hex"));
+        hashResolve(hmac.digest("hex"));
       }
     },
   });

@@ -44,6 +44,7 @@ commands:
         Can also use the environment variable BACKUP_COUNT.
       -s, --schedule: Cron pattern for scheduled backups. When provided, the script runs continuously
         and executes backups on schedule. Alternatively, you can use the environment variable BACKUP_SCHEDULE.
+      --no-checksum: Disable checksum generation. Can also use the environment variable BACKUP_CHECKSUM=false.
   restore - Restore files from previously backed up archive
     source: The source archive file. Can be local or remote.
     options:
@@ -89,15 +90,19 @@ switch (cmd) {
         const separator = dest.endsWith("/") ? "" : "/";
         return `${dest}${separator}${filename}`;
       });
+      const generateChecksum = opts.checksum !== false;
       const checksum = await backup({
         patterns,
         outputPaths,
         key,
         encryptionAlgorithm,
         compressionAlgorithm,
+        generateChecksum,
       });
       console.log("Backup created");
-      console.log(`Checksum: ${checksum}`);
+      if (checksum) {
+        console.log(`Checksum: ${checksum}`);
+      }
 
       if (backupCount !== undefined) {
         for (const destination of opts.destinations) {
@@ -211,6 +216,10 @@ export function getArgs() {
           type: "string",
           short: "n",
           default: process.env.BACKUP_COUNT,
+        },
+        checksum: {
+          type: "boolean",
+          default: process.env.BACKUP_CHECKSUM !== "false",
         },
         verifyChecksum: {
           type: "boolean",

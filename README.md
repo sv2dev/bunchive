@@ -6,7 +6,7 @@ A secure backup and restore utility that creates encrypted, compressed archives 
 
 - **Encryption**: AES-128-CTR, AES-192-CTR, or AES-256-CTR (default: AES-256-CTR)
 - **Compression**: zstd, gzip, brotli, or deflate (default: zstd)
-- **Checksum verification**: SHA-256 checksums stored alongside backups for integrity verification
+- **Checksum verification**: HMAC-SHA256 checksums stored alongside backups for integrity verification (uses encryption key to prevent manipulation)
 - **Multiple destinations**: Write backups to multiple locations simultaneously
 - **S3 support**: Direct backup to S3 buckets
 - **Glob patterns**: Flexible file matching using glob patterns
@@ -65,6 +65,12 @@ export BACKUP_FORMAT="iso"
 export BACKUP_COUNT="5"
 bun run bu backup
 
+# Disable checksum generation
+bun run bu backup -k <hex-key> -d ./backup --no-checksum "src/**/*.ts"
+# Or using environment variable
+export BACKUP_CHECKSUM="false"
+bun run bu backup -k <hex-key> -d ./backup "src/**/*.ts"
+
 # Schedule backups using cron pattern
 bun run bu backup -k <hex-key> -d ./backup -s "0 2 * * *" "src/**/*.ts"
 
@@ -85,6 +91,7 @@ bun run bu backup -k <hex-key> -d ./backup "src/**/*.ts"
 - `-t, --timestamp`: Timestamp format for backup filenames (`iso`, `unix`, `none`). Defaults to `iso`. Can also use `BACKUP_FORMAT` environment variable.
 - `-n, --count`: Number of backups to keep per destination (sliding window). Requires timestamp format to be enabled (cannot use with `-t none`). Can also use `BACKUP_COUNT` environment variable.
 - `-s, --schedule`: Cron pattern for scheduled backups. When provided, the script runs continuously and executes backups on schedule. Can also use `BACKUP_SCHEDULE` environment variable.
+- `--no-checksum`: Disable checksum generation. Can also use `BACKUP_CHECKSUM=false` environment variable.
 
 **Sources:**
 
@@ -204,7 +211,7 @@ The backup file has the following structure:
 - **First 16 bytes**: Initialization Vector (IV/nonce) for AES-CTR encryption
 - **Remaining bytes**: Encrypted, compressed tar archive
 
-Additionally, a checksum file (`.sha256`) is created alongside each backup file containing the SHA-256 hash of the **backup file itself** (including IV and encrypted data). This allows you to verify the integrity of the backup file without needing to decrypt it.
+Additionally, a checksum file (`.sha256`) is created alongside each backup file (unless `--no-checksum` is used or `BACKUP_CHECKSUM=false`). The checksum is computed as `HMAC-SHA256(key, backup_file_content)`, where the encryption key is used to generate a keyed hash of the backup file content (including IV and encrypted data). This HMAC-based approach prevents manipulation without knowledge of the encryption key, allowing you to verify the integrity of the backup file without needing to decrypt it.
 
 ### Manual Recovery Steps
 
@@ -285,19 +292,19 @@ tar -xf archive.tar -C restored
 
 #### 5. Verify Checksum (Optional)
 
-If a `.sha256` checksum file exists alongside the backup, you can verify the integrity of the backup file:
+If a `.sha256` checksum file exists alongside the backup, you can verify the integrity of the backup file. The checksum uses HMAC-SHA256 with the encryption key, so you need the key to verify it:
 
 ```bash
-# Compute SHA-256 hash of the backup file
-sha256sum "${BACKUP_FILE}"
+# Compute HMAC-SHA256 of the backup file using the key (key is in hex format)
+openssl dgst -sha256 -mac HMAC -macopt "hexkey:$KEY" "$BACKUP_FILE" | cut -d' ' -f2
 
 # Compare with the checksum file
-cat "${BACKUP_FILE}.sha256"
+cat "${BACKUP_FILE}.sha256" | tr -d '\n'
 ```
 
-The hashes should match. If they don't, the backup file may be corrupted.
+The hashes should match. If they don't, the backup file may be corrupted or the key may be incorrect.
 
-**Note:** The checksum is of the backup file itself (including IV and encrypted data), so you can verify it without decrypting.
+**Note:** The checksum is computed as `HMAC-SHA256(key, backup_file_content)`, where the key is used to generate a keyed hash of the backup file content (including IV and encrypted data). This prevents manipulation without knowledge of the encryption key.
 
 ### Complete Manual Recovery Script
 

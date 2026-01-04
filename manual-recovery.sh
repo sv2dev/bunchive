@@ -45,7 +45,7 @@ tar -xf archive.tar -C "$OUTPUT_DIR"
 
 if [ -f "${BACKUP_FILE}.sha256" ]; then
   echo "Verifying checksum..."
-  COMPUTED_HASH=$(sha256sum "$BACKUP_FILE" | cut -d' ' -f1)
+  COMPUTED_HASH=$(openssl dgst -sha256 -mac HMAC -macopt "hexkey:$KEY" "$BACKUP_FILE" 2>/dev/null | cut -d' ' -f2)
   EXPECTED_HASH=$(cat "${BACKUP_FILE}.sha256" | tr -d '\n')
   if [ "$COMPUTED_HASH" = "$EXPECTED_HASH" ]; then
     echo "Checksum verified: OK"
