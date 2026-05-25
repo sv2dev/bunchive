@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 
-import * as cron from "node-cron";
 import { parseArgs } from "node:util";
 import { backup } from "./backup";
 import { cleanupOldBackups } from "./cleanup";
@@ -66,6 +65,21 @@ commands:
   key - Generate a new encryption key\
 `;
 
+type BunCron = {
+  (schedule: string, handler: () => unknown): { stop(): unknown; ref(): unknown; unref(): unknown };
+  parse(schedule: string, relativeDate?: Date | number): Date | null;
+};
+
+const bunCron = (Bun as unknown as { cron: BunCron }).cron;
+
+function isValidCronExpression(schedule: string): boolean {
+  try {
+    return bunCron.parse(schedule) !== null;
+  } catch {
+    return false;
+  }
+}
+
 const { cmd, args, opts } = getArgs();
 
 switch (cmd) {
@@ -128,10 +142,10 @@ switch (cmd) {
     };
 
     if (opts.schedule) {
-      if (!cron.validate(opts.schedule)) {
+      if (!isValidCronExpression(opts.schedule)) {
         throw new Error(`Invalid cron pattern: ${opts.schedule}`);
       }
-      cron.schedule(opts.schedule, executeBackup);
+      bunCron(opts.schedule, executeBackup);
       console.log(`Backup scheduled: ${opts.schedule}`);
       console.log("Backup will run according to the schedule. Press Ctrl+C to stop.");
     } else {

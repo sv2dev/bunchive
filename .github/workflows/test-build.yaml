@@ -8,7 +8,7 @@ jobs:
   test:
     name: Run all tests
     runs-on: ubuntu-latest
-    container: oven/bun:1.3.5
+    container: oven/bun:1.3.14
     steps:
       - uses: actions/checkout@v4
       - run: bun install --frozen-lockfile

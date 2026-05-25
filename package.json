@@ -27,7 +27,6 @@
     "format": "oxfmt src"
   },
   "dependencies": {
-    "node-cron": "^4.2.1",
     "tar-stream": "^3.1.7"
   },
   "devDependencies": {
